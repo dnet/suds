@@ -1,0 +1,24 @@
+Source: suds
+Section: python
+Priority: optional
+Maintainer: Debian Tryton Maintainers <tryton@lists.debian-maintainers.org>
+Uploaders:
+ Daniel Baumann <daniel@debian.org>,
+ Mathias Behrle <mathiasb@mbsolutions.selfip.biz>
+Dm-Upload-Allowed: yes
+Build-Depends: debhelper (>= 7.0.50~), python, python-setuptools, python-support
+Standards-Version: 3.8.4
+Homepage: http://www.fedorahosted.org/suds/
+Vcs-Browser: http://git.debian-maintainers.org/?p=tryton/suds.git
+Vcs-Git: git://git.debian-maintainers.org/git/tryton/suds.git
+
+Package: python-suds
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-pkg-resources
+XB-Python-Version: ${python:Versions}
+Description: Lightweight SOAP client for Python
+ The suds project is a python soap web services client lib. Suds leverages
+ python meta programming to provide an intuative API for consuming web services.
+ Objectification of types defined in the WSDL is provided without class
+ generation. Programmers rarely need to read the WSDL since services and WSDL
+ based objects can be easily inspected. Supports pluggable soap bindings.
