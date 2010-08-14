@@ -19,8 +19,11 @@ Contains basic caching classes.
 """
 
 import os
+import suds
 from tempfile import gettempdir as tmp
 from suds.transport import *
+from suds.sax.parser import Parser
+from suds.sax.element import Element
 from datetime import datetime as dt
 from datetime import timedelta
 from cStringIO import StringIO
@@ -115,8 +118,6 @@ class FileCache(Cache):
     """
     A file-based URL cache.
     @cvar fnprefix: The file name prefix.
-    @type fnprefix: str
-    @ivar fnsuffix: The file name suffix.
     @type fnsuffix: str
     @ivar duration: The cached file duration which defines how
         long the file will be cached.
@@ -125,7 +126,6 @@ class FileCache(Cache):
     @type location: str
     """
     fnprefix = 'suds'
-    fnsuffix = 'gcf'
     units = ('months', 'weeks', 'days', 'hours', 'minutes', 'seconds')
     
     def __init__(self, location=None, **duration):
@@ -142,6 +142,15 @@ class FileCache(Cache):
         self.location = location
         self.duration = (None, 0)
         self.setduration(**duration)
+        self.checkversion()
+        
+    def fnsuffix(self):
+        """
+        Get the file name suffix
+        @return: The suffix
+        @rtype: str
+        """
+        return 'gcf'
         
     def setduration(self, **duration):
         """
@@ -194,8 +203,9 @@ class FileCache(Cache):
             fn = self.__fn(id)
             f = self.open(fn, 'w')
             f.write(fp.read())
+            fp.close()
             f.close()
-            return fp
+            return open(fn)
         except:
             log.debug(id, exc_info=1)
             return fp
@@ -226,7 +236,7 @@ class FileCache(Cache):
         if self.duration[1] < 1:
             return
         created = dt.fromtimestamp(os.path.getctime(fn))
-        d = {self.duration[0] : self.duration[1]}
+        d = { self.duration[0]:self.duration[1] }
         expired = created+timedelta(**d)
         if expired < dt.now():
             log.debug('%s expired, deleted', fn)
@@ -236,7 +246,7 @@ class FileCache(Cache):
         for fn in os.listdir(self.location):
             if os.path.isdir(fn):
                 continue
-            if fn.startswith(self.fnprefix) and fn.endswith(self.fnsuffix):
+            if fn.startswith(self.fnprefix):
                 log.debug('deleted: %s', fn)
                 os.remove(os.path.join(self.location, fn))
                 
@@ -254,15 +264,50 @@ class FileCache(Cache):
         self.mktmp()
         return open(fn, *args)
     
+    def checkversion(self):
+        path = os.path.join(self.location, 'version')
+        try:
+            
+            f = self.open(path)
+            version = f.read()
+            f.close()
+            if version != suds.__version__:
+                raise Exception()
+        except:
+            self.clear()
+            f = self.open(path, 'w')
+            f.write(suds.__version__)
+            f.close()        
+    
     def __fn(self, id):
-        if hasattr(id, 'name') and hasattr(id, 'suffix'):
-            name = id.name
-            suffix = id.suffix
-        else:
-            name = id
-            suffix = self.fnsuffix
-        fn = '%s-%s.%s' % (self.fnprefix, abs(hash(name)), suffix)
+        name = id
+        suffix = self.fnsuffix()
+        fn = '%s-%s.%s' % (self.fnprefix, name, suffix)
         return os.path.join(self.location, fn)
+    
+    
+class DocumentCache(FileCache):
+    """
+    Provides xml document caching.
+    """
+    
+    def fnsuffix(self):
+        return 'xml'
+    
+    def get(self, id):
+        try:
+            fp = FileCache.getf(self, id)
+            if fp is None:
+                return None
+            p = Parser()
+            return p.parse(fp)
+        except:
+            FileCache.purge(self, id)
+    
+    def put(self, id, object):
+        if isinstance(object, Element):
+            FileCache.put(self, id, str(object))
+        return object
 
 
 class ObjectCache(FileCache):
@@ -272,6 +317,9 @@ class ObjectCache(FileCache):
     @type protocol: int
     """
     protocol = 2
+    
+    def fnsuffix(self):
+        return 'px'
     
     def get(self, id):
         try:

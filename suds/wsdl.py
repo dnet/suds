@@ -31,6 +31,7 @@ from suds.xsd.schema import Schema, SchemaCollection
 from suds.xsd.query import ElementQuery
 from suds.sudsobject import Object, Facade, Metadata
 from suds.reader import DocumentReader, DefinitionsReader
+from suds.plugin import PluginContainer
 from urlparse import urljoin
 import re, soaparray
 
@@ -135,6 +136,8 @@ class Definitions(WObject):
         reader = DocumentReader(options)
         d = reader.open(url)
         root = d.root()
+        plugins = PluginContainer(options.plugins)
+        plugins.loaded(root=root)
         WObject.__init__(self, root)
         self.id = objid(self)
         self.options = options
@@ -310,8 +313,8 @@ class Import(WObject):
         log.debug('importing (%s)', url)
         if '://' not in url:
             url = urljoin(definitions.url, url)
-        reader = DefinitionsReader(definitions.options, Definitions)
-        d = reader.open(url)
+        options = definitions.options
+        d = Definitions(url, options)
         if d.root.match(Definitions.Tag, wsdlns):
             self.import_definitions(definitions, d)
             return

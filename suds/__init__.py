@@ -26,8 +26,8 @@ import sys
 # Project properties
 #
 
-__version__ = '0.3.9'
-__build__="GA R659-20100219"
+__version__ = '0.4'
+__build__="(beta) R685-20100513"
 
 #
 # Exceptions
