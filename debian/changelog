@@ -1,3 +1,11 @@
+suds (0.4-1) experimental; urgency=low
+
+  * Updating standards version to 3.9.0.
+  * Merging upstream version 0.4.
+  * Updating standards version to 3.9.1.
+
+ -- Daniel Baumann <daniel@debian.org>  Sat, 14 Aug 2010 16:28:47 +0200
+
 suds (0.3.9-1) unstable; urgency=low
 
   * Initial release.
