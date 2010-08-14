@@ -7,7 +7,7 @@ Uploaders:
  Mathias Behrle <mathiasb@mbsolutions.selfip.biz>
 Dm-Upload-Allowed: yes
 Build-Depends: debhelper (>= 7.0.50~), python, python-setuptools, python-support
-Standards-Version: 3.9.0
+Standards-Version: 3.9.1
 Homepage: http://www.fedorahosted.org/suds/
 Vcs-Browser: http://git.debian-maintainers.org/?p=tryton/suds.git
 Vcs-Git: git://git.debian-maintainers.org/git/tryton/suds.git
