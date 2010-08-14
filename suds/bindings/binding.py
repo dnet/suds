@@ -22,6 +22,7 @@ from logging import getLogger
 from suds import *
 from suds.sax import Namespace
 from suds.sax.parser import Parser
+from suds.sax.document import Document
 from suds.sax.element import Element
 from suds.sudsobject import Factory, Object
 from suds.mx import Content
@@ -109,8 +110,8 @@ class Binding:
         @type args: list
         @param kwargs: Named (keyword) args for the method invoked.
         @type kwargs: dict
-        @return: The soap message.
-        @rtype: str
+        @return: The soap envelope.
+        @rtype: L{Document}
         """
 
         content = self.headercontent(method)
@@ -123,7 +124,7 @@ class Binding:
             env.promotePrefixes()
         else:
             env.refitPrefixes()
-        return env
+        return Document(env)
     
     def get_reply(self, method, reply):
         """
@@ -144,6 +145,7 @@ class Binding:
         soapenv = replyroot.getChild('Envelope')
         soapenv.promotePrefixes()
         soapbody = soapenv.getChild('Body')
+        self.detect_fault(soapbody)
         soapbody = self.multiref.process(soapbody)
         nodes = self.replycontent(method, soapbody)
         rtypes = self.returned_types(method)
@@ -160,6 +162,23 @@ class Binding:
                 result = unmarshaller.process(nodes[0], resolved)
                 return (replyroot, result)
         return (replyroot, None)
+    
+    def detect_fault(self, body):
+        """
+        Detect I{hidden} soapenv:Fault element in the soap body.
+        @param body: The soap envelope body.
+        @type body: L{Element}
+        @raise WebFault: When found.
+        """
+        fault = body.getChild('Fault', envns)
+        if fault is None:
+            return
+        unmarshaller = self.unmarshaller(False)
+        p = unmarshaller.process(fault)
+        if self.options().faults:
+            raise WebFault(p, fault)
+        return self
+        
     
     def replylist(self, rt, nodes):
         """
@@ -206,14 +225,19 @@ class Binding:
                     continue
             resolved = rt.resolve(nobuiltin=True)
             sobject = unmarshaller.process(node, resolved)
-            if rt.unbounded():
-                value = getattr(composite, tag, None)
-                if value is None:
+            value = getattr(composite, tag, None)
+            if value is None:
+                if rt.unbounded():
                     value = []
                     setattr(composite, tag, value)
-                value.append(sobject)
+                    value.append(sobject)
+                else:
+                    setattr(composite, tag, sobject)
             else:
-                setattr(composite, tag, sobject)
+                if not isinstance(value, list):
+                    value = [value,]
+                    setattr(composite, tag, value)
+                value.append(sobject)          
         return composite
     
     def get_fault(self, reply):

@@ -23,6 +23,7 @@ from logging import getLogger
 from suds import *
 from suds.xsd import *
 from suds.sax.element import Element
+from suds.sax import Namespace
 
 log = getLogger(__name__)
 
@@ -220,6 +221,14 @@ class SchemaObject(object):
     def sequence(self):
         """
         Get whether this is an <xs:sequence/>
+        @return: True if <xs:sequence/>, else False
+        @rtype: boolean
+        """
+        return False
+    
+    def xslist(self):
+        """
+        Get whether this is an <xs:list/>
         @return: True if any, else False
         @rtype: boolean
         """
@@ -346,9 +355,14 @@ class SchemaObject(object):
     def qualify(self):
         """
         Convert attribute values, that are references to other
-        objects, into I{qref}.
+        objects, into I{qref}.  Qualfied using default document namespace.
+        Since many wsdls are written improperly: when the document does
+        not define a default namespace, the schema target namespace is used
+        to qualify references.
         """
         defns = self.root.defaultNamespace()
+        if Namespace.none(defns):
+            defns = self.schema.tns
         for a in self.autoqualified():
             ref = getattr(self, a)
             if ref is None:
