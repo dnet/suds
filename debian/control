@@ -17,8 +17,8 @@ Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}, python-pkg-resources
 XB-Python-Version: ${python:Versions}
 Description: Lightweight SOAP client for Python
- The suds project is a python soap web services client lib. Suds leverages
- python meta programming to provide an intuative API for consuming web services.
+ The suds project is a Python soap web services client lib. Suds leverages
+ Python meta programming to provide an intuative API for consuming web services.
  Objectification of types defined in the WSDL is provided without class
  generation. Programmers rarely need to read the WSDL since services and WSDL
  based objects can be easily inspected. Supports pluggable soap bindings.
