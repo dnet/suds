@@ -1,3 +1,15 @@
+suds (0.4.1-1) experimental; urgency=low
+
+  [ Mathias Behrle ]
+  * Correcting package long description to make lintian happy.
+
+  [ Daniel Baumann ]
+  * Updating to debhelper version 8.
+  * Merging upstream version 0.4.1.
+  * Updating year in copyright file.
+
+ -- Daniel Baumann <daniel@debian.org>  Sun, 31 Oct 2010 16:10:08 +0100
+
 suds (0.4-1) experimental; urgency=low
 
   * Updating standards version to 3.9.0.
