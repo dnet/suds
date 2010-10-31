@@ -41,58 +41,90 @@ class InitContext(Context):
     pass
 
 
-class LoadContext(Context):
+class DocumentContext(Context):
     """
-    The XSD load context.
-    @ivar root: The loaded xsd document root.
-    @type root: L{sax.Element}
+    The XML document load context.
+    @ivar url: The URL.
+    @type url: str
+    @ivar document: Either the XML text or the B{parsed} document root.
+    @type document: (str|L{sax.element.Element})
     """
     pass
+
         
-        
-class SendContext(Context):
+class MessageContext(Context):
     """
     The context for sending the soap envelope.
-    @ivar envelope: The soap envelope I{root} element to be sent.
-    @type envelope: L{sax.Element}
+    @ivar envelope: The soap envelope to be sent.
+    @type envelope: (str|L{sax.element.Element})
+    @ivar reply: The reply.
+    @type reply: (str|L{sax.element.Element}|object)
     """
     pass
-        
-        
-class ReplyContext(Context):
-    """
-    The context for the text received as a reply
-    to method invocation.
-    @ivar reply: The received text.
-    @type reply: unicode
-    """
-    pass
-    
 
 
 class Plugin:
     """
-    The base class for suds plugins.
-    All plugins should implement this interface.
+    Plugin base.
+    """
+    pass
+
+
+class InitPlugin(Plugin):
+    """
+    The base class for suds I{init} plugins.
     """
     
     def initialized(self, context):
         """
-        Suds initialization.
+        Suds client initialization.
         Called after wsdl the has been loaded.  Provides the plugin
         with the opportunity to inspect/modify the WSDL.
         @param context: The init context.
         @type context: L{InitContext}
         """
         pass
+
+
+class DocumentPlugin(Plugin):
+    """
+    The base class for suds I{document} plugins.
+    """
     
-    def loaded(self, context):
+    def loaded(self, context): 
         """
-        Suds has loaded an XSD document.  Provides the plugin
-        with an opportunity to inspect/modify the loaded XSD.
-        Called after each XSD document is loaded.
-        @param context: The XSD load context.
-        @type context: L{LoadContext}
+        Suds has loaded a WSDL/XSD document.  Provides the plugin 
+        with an opportunity to inspect/modify the unparsed document. 
+        Called after each WSDL/XSD document is loaded. 
+        @param context: The document context. 
+        @type context: L{DocumentContext} 
+        """
+        pass 
+    
+    def parsed(self, context):
+        """
+        Suds has parsed a WSDL/XSD document.  Provides the plugin
+        with an opportunity to inspect/modify the parsed document.
+        Called after each WSDL/XSD document is parsed.
+        @param context: The document context.
+        @type context: L{DocumentContext}
+        """
+        pass
+
+
+class MessagePlugin(Plugin):
+    """
+    The base class for suds I{soap message} plugins.
+    """
+    
+    def marshalled(self, context):
+        """
+        Suds will send the specified soap envelope.
+        Provides the plugin with the opportunity to inspect/modify
+        the envelope Document before it is sent.
+        @param context: The send context.
+            The I{envelope} is the envelope docuemnt.
+        @type context: L{MessageContext}
         """
         pass
     
@@ -100,9 +132,10 @@ class Plugin:
         """
         Suds will send the specified soap envelope.
         Provides the plugin with the opportunity to inspect/modify
-        the message before it is sent.
+        the message text it is sent.
         @param context: The send context.
-        @type context: L{SendContext}
+            The I{envelope} is the envelope text.
+        @type context: L{MessageContext}
         """
         pass
     
@@ -110,12 +143,35 @@ class Plugin:
         """
         Suds has received the specified reply.
         Provides the plugin with the opportunity to inspect/modify
-        the received XML.
+        the received XML text before it is SAX parsed.
         @param context: The reply context.
-        @type context: L{ReplyContext}
+            The I{reply} is the raw text.
+        @type context: L{MessageContext}
         """
         pass
-   
+    
+    def parsed(self, context):
+        """
+        Suds has sax parsed the received reply.
+        Provides the plugin with the opportunity to inspect/modify
+        the sax parsed DOM tree for the reply before it is unmarshalled.
+        @param context: The reply context.
+            The I{reply} is DOM tree.
+        @type context: L{MessageContext}
+        """
+        pass
+    
+    def unmarshalled(self, context):
+        """
+        Suds has unmarshalled the received reply.
+        Provides the plugin with the opportunity to inspect/modify
+        the unmarshalled reply object before it is returned.
+        @param context: The reply context.
+            The I{reply} is unmarshalled suds object.
+        @type context: L{MessageContext}
+        """
+        pass
+
     
 class PluginContainer:
     """
@@ -126,11 +182,10 @@ class PluginContainer:
     @type ctxclass: dict
     """
     
-    ctxclass = {\
-        'initialized':InitContext,
-        'loaded':LoadContext,
-        'sending':SendContext,
-        'received':ReplyContext,
+    domains = {\
+        'init': (InitContext, InitPlugin),
+        'document': (DocumentContext, DocumentPlugin),
+        'message': (MessageContext, MessagePlugin ),
     }
     
     def __init__(self, plugins):
@@ -141,11 +196,33 @@ class PluginContainer:
         self.plugins = plugins
     
     def __getattr__(self, name):
-        ctx = self.ctxclass.get(name)
-        if ctx:
-            return Method(name, ctx, self.plugins)
+        domain = self.domains.get(name)
+        if domain:
+            plugins = []
+            ctx, pclass = domain
+            for p in self.plugins:
+                if isinstance(p, pclass):
+                    plugins.append(p)
+            return PluginDomain(ctx, plugins)
         else:
-            raise AttributeError(name)
+            raise Exception, 'plugin domain (%s), invalid' % name
+        
+        
+class PluginDomain:
+    """
+    The plugin domain.
+    @ivar ctx: A context.
+    @type ctx: L{Context}
+    @ivar plugins: A list of plugins (targets).
+    @type plugins: list
+    """
+    
+    def __init__(self, ctx, plugins):
+        self.ctx = ctx
+        self.plugins = plugins
+    
+    def __getattr__(self, name):
+        return Method(name, self)
 
 
 class Method:
@@ -153,32 +230,28 @@ class Method:
     Plugin method.
     @ivar name: The method name.
     @type name: str
-    @ivar ctx: A context.
-    @type ctx: L{Context}
-    @ivar plugins: A list of plugins (targets).
-    @type plugins: list
+    @ivar domain: The plugin domain.
+    @type domain: L{PluginDomain}
     """
 
-    def __init__(self, name, ctx, plugins):
+    def __init__(self, name, domain):
         """
         @param name: The method name.
         @type name: str
-        @param ctx: A context.
-        @type ctx: L{Context}
-        @param plugins: A list of plugins (targets).
-        @type plugins: list
+        @param domain: A plugin domain.
+        @type domain: L{PluginDomain}
         """
         self.name = name
-        self.ctx = ctx()
-        self.plugins = plugins
+        self.domain = domain
             
     def __call__(self, **kwargs):
-        self.ctx.__dict__.update(kwargs)
-        for plugin in self.plugins:
+        ctx = self.domain.ctx()
+        ctx.__dict__.update(kwargs)
+        for plugin in self.domain.plugins:
             try:
                 method = getattr(plugin, self.name, None)
-                if method:
-                    method(self.ctx)
+                if method and callable(method):
+                    method(ctx)
             except Exception, pe:
                 log.exception(pe)
-        return self.ctx
+        return ctx

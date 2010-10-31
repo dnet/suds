@@ -84,6 +84,10 @@ class Options(Skin):
             of the python object graph.
                 - type: I{bool}
                 - default: False
+        - B{prettyxml} - Flag that causes I{pretty} xml to be rendered when generating
+            the outbound soap envelope.
+                - type: I{bool}
+                - default: False
         - B{autoblend} - Flag that ensures that the schema(s) defined within the
             WSDL import each other.
                 - type: I{bool}
@@ -95,6 +99,11 @@ class Options(Skin):
                 - default: 0
         - B{plugins} - A plugin container.
                 - type: I{list}
+        - B{nosend} - Create the soap envelope but don't send.
+            When specified, method invocation returns a I{RequestContext}
+            instead of sending it.
+                - type: I{bool}
+                - default: False
     """    
     def __init__(self, **kwargs):
         domain = __name__
@@ -111,8 +120,10 @@ class Options(Skin):
             Definition('xstq', bool, True),
             Definition('prefixes', bool, True),
             Definition('retxml', bool, False),
+            Definition('prettyxml', bool, False),
             Definition('autoblend', bool, False),
             Definition('cachingpolicy', int, 0),
-            Definition('plugins', [], (list, tuple)),
+            Definition('plugins', (list, tuple), []),
+            Definition('nosend', bool, False),
         ]
         Skin.__init__(self, domain, definitions, kwargs)
