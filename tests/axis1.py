@@ -29,7 +29,7 @@ from suds import WebFault
 from suds.client import Client
 from suds.sudsobject import Object
 from suds.transport.https import HttpAuthenticated
-from suds.plugin import Plugin
+from suds.plugin import *
 
 errors = 0
 
@@ -38,19 +38,43 @@ credentials = dict(username='jortel', password='abc123')
 setup_logging()
 
 
-class TestPlugin(Plugin):
-    
+class MyInitPlugin(InitPlugin):
+
     def initialized(self, context):
-        print 'initialized: ctx=%s' % context.__dict__
-        
+        print 'PLUGIN (init): initialized: ctx=%s' % context.__dict__
+
+    
+class MyDocumentPlugin(DocumentPlugin):
+    
     def loaded(self, context):
-        print 'loaded: ctx=%s' % context.__dict__
+        print 'PLUGIN (document): loaded: ctx=%s' % context.__dict__
+
+    def parsed(self, context):
+        print 'PLUGIN (document): parsed: ctx=%s' % context.__dict__
+
+        
+class MyMessagePlugin(MessagePlugin):
+        
+    def marshalled(self, context):
+        print 'PLUGIN (message): marshalled: ctx=%s' % context.__dict__
     
     def sending(self, context):
-        print 'sending: ctx=%s' % context.__dict__
+        print 'PLUGIN (message): sending: ctx=%s' % context.__dict__
 
     def received(self, context):
-        print 'received: ctx=%s' % context.__dict__
+        print 'PLUGIN (message): received: ctx=%s' % context.__dict__
+        
+    def parsed(self, context):
+        print 'PLUGIN (message): parsed: ctx=%s' % context.__dict__
+        
+    def unmarshalled(self, context):
+        print 'PLUGIN: (massage): unmarshalled: ctx=%s' % context.__dict__
+        
+        
+myplugins = (
+    MyInitPlugin(),
+    MyDocumentPlugin(),
+    MyMessagePlugin(),)
 
 
 #logging.getLogger('suds.client').setLevel(logging.DEBUG)
@@ -64,7 +88,7 @@ try:
     url = 'http://localhost:8081/axis/services/basic-rpc-encoded?wsdl'
     start(url)
     t = HttpAuthenticated(**credentials)
-    client = Client(url, transport=t, cache=None, plugins=[TestPlugin()])
+    client = Client(url, transport=t, cache=None, plugins=myplugins)
     print client
     #
     # create a name object using the wsdl
@@ -113,6 +137,20 @@ try:
     print 'addPersion()'
     result = client.service.addPerson(person)
     print '\nreply(\n%s\n)\n' % str(result)
+    
+    #
+    # Async
+    #
+    client.options.nosend=True
+    reply = '<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Body><ns1:addPersonResponse soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:ns1="http://basic.suds.fedora.org"><addPersonReturn xsi:type="xsd:string">person (jeff&#x4D2;,ortel) at age 43 with phone numbers (410-555-5138,919-555-4406,205-777-1212, and pets (Chance,) - added.</addPersonReturn></ns1:addPersonResponse></soapenv:Body></soapenv:Envelope>'
+    request = client.service.addPerson(person)
+    result = request.succeeded(reply)
+    error = Object()
+    error.httpcode = '500'
+    client.options.nosend=False
+#    request.failed(error)
+    
+    #
     #
     # create a new name object used to update the person
     #
