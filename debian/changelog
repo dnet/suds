@@ -1,3 +1,9 @@
+suds (0.4.1-2) experimental; urgency=low
+
+  * Switching to source format 3.0 (quilt).
+
+ -- Daniel Baumann <daniel@debian.org>  Fri, 12 Nov 2010 14:18:23 +0100
+
 suds (0.4.1-1) experimental; urgency=low
 
   [ Mathias Behrle ]
