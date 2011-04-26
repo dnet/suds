@@ -24,8 +24,8 @@ License: LGPL-3+
 
 Files: debian/*
 Copyright:
- (C) 2010 Daniel Baumann <daniel@debian.org>
- (C) 2010 Mathias Behrle <mathiasb@m9s.biz>
+ (C) 2010-2011 Daniel Baumann <daniel@debian.org>
+ (C) 2010-2011 Mathias Behrle <mathiasb@m9s.biz>
 License: LGPL-3+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU Lesser General Public License as published by
