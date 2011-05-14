@@ -24,6 +24,8 @@ from suds.sudsobject import Object
 from suds.sax.element import Element
 from suds.sax.date import UTC
 from datetime import datetime, timedelta
+from hashlib import sha1
+from base64 import b64encode
 
 try:
     from hashlib import md5
@@ -114,7 +116,7 @@ class UsernameToken(Token):
     @type created: L{datetime}
     """
 
-    def __init__(self, username=None, password=None):
+    def __init__(self, username=None, password=None, digest=False):
         """
         @param username: A username.
         @type username: str
@@ -124,8 +126,18 @@ class UsernameToken(Token):
         Token.__init__(self)
         self.username = username
         self.password = password
-        self.nonce = None
-        self.created = None
+        self.digest = digest
+        if digest:
+            self.setnonce()
+            self.setcreated()
+            m = sha1()
+            m.update(self.nonce)
+            m.update(str(UTC(self.created)))
+            m.update(password)
+            self.password = b64encode(m.digest())
+        else:
+            self.nonce = None
+            self.created = None
         
     def setnonce(self, text=None):
         """
@@ -171,6 +183,9 @@ class UsernameToken(Token):
         root.append(u)
         p = Element('Password', ns=wssens)
         p.setText(self.password)
+        p.set('Type', 'http://docs.oasis-open.org/wss/2004/01/'
+            'oasis-200401-wss-username-token-profile-1.0#' + (
+            'PasswordDigest' if self.digest else 'PasswordText'))
         root.append(p)
         if self.nonce is not None:
             n = Element('Nonce', ns=wssens)
