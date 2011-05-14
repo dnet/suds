@@ -154,7 +154,7 @@ class UsernameToken(Token):
             s.append(Token.sysdate())
             m = md5()
             m.update(':'.join(s))
-            self.nonce = m.hexdigest()
+            self.nonce = m.digest()
         else:
             self.nonce = text
         
@@ -189,7 +189,12 @@ class UsernameToken(Token):
         root.append(p)
         if self.nonce is not None:
             n = Element('Nonce', ns=wssens)
-            n.setText(self.nonce)
+            if self.digest:
+                n.set('EncodingType', 'http://docs.oasis-open.org/wss/2004'
+                    '/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary')
+                n.setText(b64encode(self.nonce))
+            else:
+                n.setText(self.nonce)
             root.append(n)
         if self.created is not None:
             n = Element('Created', ns=wsuns)
