@@ -122,6 +122,8 @@ class UsernameToken(Token):
         @type username: str
         @param password: A password.
         @type password: str
+        @param digest: Enables digest generation.
+        @type digest: bool
         """
         Token.__init__(self)
         self.username = username
