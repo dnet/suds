@@ -18,6 +18,8 @@
 Contains transport interface (classes).
 """
 
+import re
+from email import message_from_string
 
 class TransportError(Exception):
     def __init__(self, reason, httpcode, fp=None):
@@ -79,6 +81,27 @@ class Reply:
         self.code = code
         self.headers = headers
         self.message = message
+        self.check_multipart()
+
+    MULTIPART_RE = re.compile(r';([^=]+)="([^"]+)"')
+    def check_multipart(self):
+        content_type = self.headers.get('content-type', '')
+        if content_type.startswith('multipart/related'):
+            metadata = dict(self.MULTIPART_RE.findall(content_type))
+            if metadata.get('start-info', '') == 'text/xml':
+                self.extract_multipart(metadata)
+
+    def extract_multipart(self, metadata):
+        parsed = message_from_string(('Content-Type: multipart/mixed; '
+            'boundary={0}\r\n\r\n{1}').format(metadata['boundary'], self.message))
+        self.parts = parsed.get_payload()
+        self.set_part_as_message(metadata['start'])
+
+    def set_part_as_message(self, content_id):
+        for part in self.parts:
+            if part['Content-ID'] == content_id:
+                self.message = part.get_payload(decode=True)
+                break
         
     def __str__(self):
         s = []
